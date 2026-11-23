@@ -325,7 +325,7 @@
     <header class="app-header">
       <div>
         <h2 id="headerTitle">Livraison Manager</h2>
-        <small id="headerSub">Connecté • v7</small>
+        <small id="headerSub">Connecté • v8</small>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <button class="btn btn-sm btn-outline" onclick="syncData()" title="Actualiser">🔄</button>
@@ -502,10 +502,10 @@
     const SUPABASE_KEY = "sb_publishable_V03DVtMLcDV59b3cCaLZSA_aKhtFkNJ";
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const LS_FOURNISSEURS = "lm_fournisseurs_v7";
-    const LS_COLIS = "lm_colis_v7";
-    const LS_SESSION = "lm_session_v7";
-    const LS_CONTROLE = "lm_controle_dt_v7";
+    const LS_FOURNISSEURS = "lm_fournisseurs_v8";
+    const LS_COLIS = "lm_colis_v8";
+    const LS_SESSION = "lm_session_v8";
+    const LS_CONTROLE = "lm_controle_dt_v8";
     const DEFAULT_LIVRAISON = 8;
 
     let isOnline = false;
@@ -651,7 +651,7 @@
         currentUser.role === "livreur" ? "Espace Livreur (Admin)" : currentUser.nom;
       document.getElementById("headerSub").textContent =
         (currentUser.role === "livreur" ? "Supervision complète" : "Espace Fournisseur") +
-        (isOnline ? " • Supabase en ligne • v7" : " • Mode local • v7");
+        (isOnline ? " • Supabase en ligne • v8" : " • Mode local • v8");
 
       if (currentUser.role === "livreur") {
         document.getElementById("livreurNav").classList.remove("hidden");
@@ -905,10 +905,7 @@
     });
 
     async function updateColisStatus(id, newStatus) {
-      if (isFournisseurAccount() && newStatus === "Payé") {
-        alert("Seul le livreur (Admin) peut marquer un colis comme Payé.");
-        return;
-      }
+      if (isFournisseurAccount()) return;
       const patch = { statut: newStatus };
       if (newStatus === "Payé Fournisseur") {
         patch.settled_at = new Date().toISOString();
@@ -927,10 +924,7 @@
 
     async function bulkUpdateStatus(newStatus) {
       if (!selectedIds.size) return;
-      if (isFournisseurAccount() && newStatus === "Payé") {
-        alert("Seul le livreur (Admin) peut marquer un colis comme Payé.");
-        return;
-      }
+      if (isFournisseurAccount()) return;
       const ids = Array.from(selectedIds);
       const patch = { statut: newStatus };
       if (newStatus === "Payé Fournisseur") {
@@ -1067,6 +1061,7 @@
       document.getElementById("btnBulkDepot").classList.toggle("hidden", !isLivreur);
       document.getElementById("btnBulkCours").classList.toggle("hidden", !isLivreur);
       document.getElementById("btnBulkPaye").classList.toggle("hidden", !isLivreur);
+      document.getElementById("btnBulkPayeF").classList.toggle("hidden", !isLivreur);
 
       const container = document.getElementById("colisList");
       if (!visible.length) {
@@ -1095,10 +1090,10 @@
                   ${priceLine}<br/>
                   🕒 Date: ${majDate}
                 </div>
-                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;">
-                  ${
-                    isLivreur
-                      ? `
+                ${
+                  isLivreur
+                    ? `
+                  <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;">
                     <select style="width:auto; padding:6px 10px; font-size:13px;" onchange="updateColisStatus('${c.id}', this.value)">
                       <option value="En dépôt" ${c.statut === "En dépôt" ? "selected" : ""}>En dépôt</option>
                       <option value="En cours" ${c.statut === "En cours" ? "selected" : ""}>En cours</option>
@@ -1107,16 +1102,10 @@
                     </select>
                     <button class="btn btn-sm btn-outline" onclick="openEditModal('${c.id}')">✏️ Modifier</button>
                     <button class="btn btn-sm btn-danger" onclick="deleteColis('${c.id}')">🗑️</button>
-                  `
-                      : `
-                    ${
-                      c.statut !== "Payé Fournisseur" && c.statut !== "Payé"
-                        ? `<button class="btn btn-sm btn-primary" onclick="updateColisStatus('${c.id}', 'Payé Fournisseur')">Marquer Payé Fournisseur</button>`
-                        : ""
-                    }
-                  `
-                  }
-                </div>
+                  </div>
+                `
+                    : ""
+                }
               </div>
             </div>`;
           })
