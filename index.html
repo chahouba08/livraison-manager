@@ -325,7 +325,7 @@
     <header class="app-header">
       <div>
         <h2 id="headerTitle">Livraison Manager</h2>
-        <small id="headerSub">Connecté • v2</small>
+        <small id="headerSub">Connecté • v4</small>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <button class="btn btn-sm btn-outline" onclick="syncData()" title="Actualiser">🔄</button>
@@ -381,7 +381,7 @@
             <input type="text" id="cAdresse" placeholder="Adresse / Ville" required />
             <input type="text" id="cArticle" placeholder="Article / Désignation" />
             <input type="number" step="0.01" id="cMontant" placeholder="Prix net / produit (DT)" required />
-            <input type="number" step="0.01" id="cLivraison" value="8" placeholder="Frais de livraison (DT)" required />
+            <input type="number" step="0.01" id="cLivraison" value="8" placeholder="Frais de livraison (DT)" />
             <button type="submit" class="btn btn-primary" style="grid-column: 1 / -1;">Enregistrer le colis</button>
           </form>
         </div>
@@ -439,9 +439,9 @@
     const SUPABASE_KEY = "sb_publishable_V03DVtMLcDV59b3cCaLZSA_aKhtFkNJ";
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const LS_FOURNISSEURS = "lm_fournisseurs_v2";
-    const LS_COLIS = "lm_colis_v2";
-    const LS_SESSION = "lm_session_v2";
+    const LS_FOURNISSEURS = "lm_fournisseurs_v4";
+    const LS_COLIS = "lm_colis_v4";
+    const LS_SESSION = "lm_session_v4";
 
     let isOnline = false;
     let currentUser = null;
@@ -449,6 +449,10 @@
     let fournisseurs = [];
     let colis = [];
     let selectedIds = new Set();
+
+    function isFournisseurAccount() {
+      return currentUser && currentUser.role === "fournisseur";
+    }
 
     function isFournisseurView() {
       if (!currentUser) return false;
@@ -564,10 +568,9 @@
       const livInput = document.getElementById("cLivraison");
       const hideLiv = isFournisseurView();
       livInput.classList.toggle("hidden", hideLiv);
-      livInput.required = !hideLiv;
       if (hideLiv) {
         livInput.value = "0";
-      } else if (livInput.value === "" || livInput.value === "0") {
+      } else if (livInput.value === "") {
         livInput.value = "8";
       }
     }
@@ -579,7 +582,7 @@
         currentUser.role === "livreur" ? "Espace Livreur (Admin)" : currentUser.nom;
       document.getElementById("headerSub").textContent =
         (currentUser.role === "livreur" ? "Supervision complète" : "Espace Fournisseur") +
-        (isOnline ? " • Supabase en ligne" : " • Mode local");
+        (isOnline ? " • Supabase en ligne • v4" : " • Mode local • v4");
 
       if (currentUser.role === "livreur") {
         document.getElementById("livreurNav").classList.remove("hidden");
@@ -677,7 +680,10 @@
       const article = document.getElementById("cArticle").value.trim() || "Colis";
       const prix_article = parseFloat(document.getElementById("cMontant").value) || 0;
       const livRaw = document.getElementById("cLivraison").value.trim();
-      const prix_livraison = isFournisseurView() ? 0 : (livRaw === "" ? 0 : parseFloat(livRaw) || 0);
+      let prix_livraison = 0;
+      if (!isFournisseurView()) {
+        prix_livraison = livRaw === "" ? 8 : (isNaN(parseFloat(livRaw)) ? 8 : parseFloat(livRaw));
+      }
       const statut = "En dépôt";
 
       const item = {
@@ -713,6 +719,10 @@
     });
 
     async function updateColisStatus(id, newStatus) {
+      if (isFournisseurAccount() && newStatus === "Payé") {
+        alert("Seul le livreur (Admin) peut marquer un colis comme Payé.");
+        return;
+      }
       const patch = { statut: newStatus };
       if (newStatus === "Payé Fournisseur") {
         patch.settled_at = new Date().toISOString();
@@ -731,6 +741,10 @@
 
     async function bulkUpdateStatus(newStatus) {
       if (!selectedIds.size) return;
+      if (isFournisseurAccount() && newStatus === "Payé") {
+        alert("Seul le livreur (Admin) peut marquer un colis comme Payé.");
+        return;
+      }
       const ids = Array.from(selectedIds);
       const patch = { statut: newStatus };
       if (newStatus === "Payé Fournisseur") {
@@ -908,7 +922,7 @@
                   `
                       : `
                     ${
-                      c.statut !== "Payé Fournisseur"
+                      c.statut !== "Payé Fournisseur" && c.statut !== "Payé"
                         ? `<button class="btn btn-sm btn-primary" onclick="updateColisStatus('${c.id}', 'Payé Fournisseur')">Marquer Payé Fournisseur</button>`
                         : ""
                     }
