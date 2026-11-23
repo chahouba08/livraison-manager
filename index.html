@@ -272,7 +272,6 @@
 </head>
 <body>
 
-  <!-- LOGIN VIEW -->
   <div id="loginView" class="login-wrapper">
     <div class="login-card">
       <div class="logo-box">🚚</div>
@@ -294,7 +293,6 @@
     </div>
   </div>
 
-  <!-- MAIN APP VIEW -->
   <div id="appView" class="hidden">
     <header class="app-header">
       <div>
@@ -308,17 +306,14 @@
     </header>
 
     <div class="container">
-      <!-- LIVREUR NAVIGATION -->
       <div id="livreurNav" class="tabs hidden">
         <button class="tab active" data-tab="colis" onclick="switchLivreurTab('colis')">📦 Tous les colis</button>
         <button class="tab" data-tab="fournisseurs" onclick="switchLivreurTab('fournisseurs')">🏪 Fournisseurs</button>
         <button class="tab" data-tab="espaceFournisseur" onclick="switchLivreurTab('espaceFournisseur')">👁️ Vue par fournisseur</button>
       </div>
 
-      <!-- STATS -->
       <div class="stats-grid" id="statsGrid"></div>
 
-      <!-- SECTION: FOURNISSEURS MANAGEMENT (LIVREUR ONLY) -->
       <div id="sectionFournisseurs" class="hidden">
         <div class="card">
           <div class="card-title">➕ Ajouter un fournisseur</div>
@@ -335,15 +330,12 @@
         </div>
       </div>
 
-      <!-- SECTION: ESPACE FOURNISSEUR SELECTOR (LIVREUR ONLY) -->
       <div id="sectionSelectFournisseur" class="card hidden">
         <div class="card-title">🏪 Sélectionner un fournisseur à gérer / consulter</div>
         <select id="adminFournisseurSelect" onchange="renderColis()"></select>
       </div>
 
-      <!-- SECTION: COLIS (SHARED BY LIVREUR & FOURNISSEUR) -->
       <div id="sectionColis">
-        <!-- ADD COLIS FORM -->
         <div class="card" id="addColisCard">
           <div class="card-title">➕ Nouveau colis</div>
           <form id="addColisForm" class="grid-2">
@@ -360,7 +352,6 @@
           </form>
         </div>
 
-        <!-- FILTERS & BORDEREAU -->
         <div class="card">
           <div class="card-title">
             <span>📦 Liste des colis</span>
@@ -384,7 +375,6 @@
       </div>
     </div>
 
-    <!-- BULK ACTION BAR -->
     <div id="bulkBar" class="bulk-bar hidden">
       <div><strong id="selectedCount">0</strong> colis sélectionné(s)</div>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -397,7 +387,6 @@
     </div>
   </div>
 
-  <!-- BORDEREAU MODAL -->
   <div id="bordereauModal" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
