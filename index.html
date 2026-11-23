@@ -325,7 +325,7 @@
     <header class="app-header">
       <div>
         <h2 id="headerTitle">Livraison Manager</h2>
-        <small id="headerSub">Connecté • v8</small>
+        <small id="headerSub">Connecté • v9</small>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <button class="btn btn-sm btn-outline" onclick="syncData()" title="Actualiser">🔄</button>
@@ -347,7 +347,7 @@
         <div class="card">
           <div class="card-title">💵 Contrôle financier & ajustements (DT)</div>
           <div class="stats-grid" style="margin-bottom:14px;">
-            <div class="stat-box"><span>Recettes Colis (DT)</span><strong id="dtColisTotal">0.00 DT</strong></div>
+            <div class="stat-box"><span>Reste à payer Fournisseurs (DT)</span><strong id="dtColisTotal">0.00 DT</strong></div>
             <div class="stat-box"><span>Frais Livraison (DT)</span><strong id="dtLivTotal">0.00 DT</strong></div>
             <div class="stat-box"><span>Ajustements (+) (DT)</span><strong id="dtPlusTotal">0.00 DT</strong></div>
             <div class="stat-box"><span>Solde Contrôle Net (DT)</span><strong id="dtSoldeNet">0.00 DT</strong></div>
@@ -451,7 +451,7 @@
     <div class="modal-card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <strong>✏️ Modifier le colis</strong>
-        <button class="btn btn-sm btn-danger" onclick="closeEditModal()">Fermer</button>
+        <button type="button" class="btn btn-sm btn-danger" onclick="closeEditModal()">Fermer</button>
       </div>
       <form id="editColisForm" class="grid-2">
         <input type="hidden" id="editColisId" />
@@ -473,11 +473,11 @@
         </div>
         <div class="field" style="margin-bottom:0;">
           <label>Net / Colis (DT)</label>
-          <input type="number" step="0.01" id="editNet" required />
+          <input type="number" step="any" inputmode="decimal" id="editNet" required />
         </div>
         <div class="field" style="margin-bottom:0;">
           <label>Livraison (DT)</label>
-          <input type="number" step="0.01" id="editLivraison" required />
+          <input type="number" step="any" inputmode="decimal" id="editLivraison" required />
         </div>
         <button type="submit" class="btn btn-primary" style="grid-column: 1 / -1; margin-top:6px;">💾 Enregistrer les modifications</button>
       </form>
@@ -502,10 +502,10 @@
     const SUPABASE_KEY = "sb_publishable_V03DVtMLcDV59b3cCaLZSA_aKhtFkNJ";
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const LS_FOURNISSEURS = "lm_fournisseurs_v8";
-    const LS_COLIS = "lm_colis_v8";
-    const LS_SESSION = "lm_session_v8";
-    const LS_CONTROLE = "lm_controle_dt_v8";
+    const LS_FOURNISSEURS = "lm_fournisseurs_v9";
+    const LS_COLIS = "lm_colis_v9";
+    const LS_SESSION = "lm_session_v9";
+    const LS_CONTROLE = "lm_controle_dt_v9";
     const DEFAULT_LIVRAISON = 8;
 
     let isOnline = false;
@@ -515,6 +515,14 @@
     let colis = [];
     let controlesDt = [];
     let selectedIds = new Set();
+
+    function parseDecimal(val, fallback = 0) {
+      if (val === null || val === undefined) return fallback;
+      const cleaned = String(val).trim().replace(",", ".");
+      if (cleaned === "") return fallback;
+      const num = parseFloat(cleaned);
+      return Number.isFinite(num) ? num : fallback;
+    }
 
     function isFournisseurAccount() {
       return currentUser && currentUser.role === "fournisseur";
@@ -651,7 +659,7 @@
         currentUser.role === "livreur" ? "Espace Livreur (Admin)" : currentUser.nom;
       document.getElementById("headerSub").textContent =
         (currentUser.role === "livreur" ? "Supervision complète" : "Espace Fournisseur") +
-        (isOnline ? " • Supabase en ligne • v8" : " • Mode local • v8");
+        (isOnline ? " • Supabase en ligne • v9" : " • Mode local • v9");
 
       if (currentUser.role === "livreur") {
         document.getElementById("livreurNav").classList.remove("hidden");
@@ -699,7 +707,7 @@
       e.preventDefault();
       const label = document.getElementById("ctrlLabel").value.trim();
       const type = document.getElementById("ctrlType").value;
-      const montant = Math.abs(parseFloat(document.getElementById("ctrlMontant").value) || 0);
+      const montant = Math.abs(parseDecimal(document.getElementById("ctrlMontant").value, 0));
       if (!label || !montant) return;
       controlesDt.unshift({
         id: "dt-" + Date.now(),
@@ -720,7 +728,9 @@
     }
 
     function renderControleDt() {
-      const totalNetColis = colis.reduce((s, c) => s + Number(c.prix_article || 0), 0);
+      const resteFournisseur = colis
+        .filter((c) => c.statut !== "Payé Fournisseur")
+        .reduce((s, c) => s + Number(c.prix_article || 0), 0);
       const totalLivColis = colis.reduce((s, c) => s + Number(c.prix_livraison || 0), 0);
       const plusAdj = controlesDt
         .filter((x) => x.type === "plus")
@@ -728,9 +738,9 @@
       const moinsAdj = controlesDt
         .filter((x) => x.type === "moins")
         .reduce((s, x) => s + Number(x.montant || 0), 0);
-      const soldeNet = totalNetColis + totalLivColis + plusAdj - moinsAdj;
+      const soldeNet = resteFournisseur + totalLivColis + plusAdj - moinsAdj;
 
-      document.getElementById("dtColisTotal").textContent = totalNetColis.toFixed(2) + " DT";
+      document.getElementById("dtColisTotal").textContent = resteFournisseur.toFixed(2) + " DT";
       document.getElementById("dtLivTotal").textContent = totalLivColis.toFixed(2) + " DT";
       document.getElementById("dtPlusTotal").textContent = plusAdj.toFixed(2) + " DT";
       document.getElementById("dtSoldeNet").textContent = soldeNet.toFixed(2) + " DT";
@@ -813,19 +823,14 @@
       const telephone = document.getElementById("cTel").value.trim();
       const adresse = document.getElementById("cAdresse").value.trim();
       const article = document.getElementById("cArticle").value.trim() || "Colis";
-      const saisieMontant = parseFloat(document.getElementById("cMontant").value) || 0;
+      const saisieMontant = parseDecimal(document.getElementById("cMontant").value, 0);
       const livRaw = String(document.getElementById("cLivraison").value ?? "").trim();
 
       let prix_livraison = 0;
       let prix_article = saisieMontant;
 
       if (!isFournisseurView()) {
-        if (livRaw === "") {
-          prix_livraison = DEFAULT_LIVRAISON;
-        } else {
-          const parsedLiv = parseFloat(livRaw);
-          prix_livraison = Number.isFinite(parsedLiv) ? parsedLiv : DEFAULT_LIVRAISON;
-        }
+        prix_livraison = livRaw === "" ? DEFAULT_LIVRAISON : parseDecimal(livRaw, DEFAULT_LIVRAISON);
         prix_article = saisieMontant + DEFAULT_LIVRAISON;
       }
       const statut = "En dépôt";
@@ -865,13 +870,13 @@
     function openEditModal(id) {
       const target = colis.find((c) => String(c.id) === String(id));
       if (!target) return;
-      document.getElementById("editColisId").value = target.id;
+      document.getElementById("editColisId").value = String(target.id);
       document.getElementById("editClient").value = target.client_nom || "";
       document.getElementById("editTel").value = target.telephone || "";
       document.getElementById("editAdresse").value = target.adresse || "";
       document.getElementById("editArticle").value = target.article || "";
-      document.getElementById("editNet").value = Number(target.prix_article || 0);
-      document.getElementById("editLivraison").value = Number(target.prix_livraison || 0);
+      document.getElementById("editNet").value = String(parseDecimal(target.prix_article, 0));
+      document.getElementById("editLivraison").value = String(parseDecimal(target.prix_livraison, 0));
       document.getElementById("editColisModal").classList.remove("hidden");
     }
 
@@ -887,8 +892,8 @@
         telephone: document.getElementById("editTel").value.trim(),
         adresse: document.getElementById("editAdresse").value.trim(),
         article: document.getElementById("editArticle").value.trim() || "Colis",
-        prix_article: parseFloat(document.getElementById("editNet").value) || 0,
-        prix_livraison: parseFloat(document.getElementById("editLivraison").value) || 0
+        prix_article: parseDecimal(document.getElementById("editNet").value, 0),
+        prix_livraison: parseDecimal(document.getElementById("editLivraison").value, 0)
       };
 
       if (isOnline) {
@@ -1033,11 +1038,14 @@
     function renderColis() {
       const visible = getVisibleColis();
       const totalColis = visible.length;
+      const resteProduits = visible
+        .filter((c) => c.statut !== "Payé Fournisseur")
+        .reduce((s, c) => s + Number(c.prix_article || 0), 0);
       const totalNet = visible.reduce((s, c) => s + Number(c.prix_article || 0), 0);
       const totalLiv = visible.reduce((s, c) => s + Number(c.prix_livraison || 0), 0);
       const totalClient = totalNet + totalLiv;
       const netPayeFournisseur = visible
-        .filter((c) => c.statut === "Payé" || c.statut === "Payé Fournisseur")
+        .filter((c) => c.statut === "Payé Fournisseur")
         .reduce((s, c) => s + Number(c.prix_article || 0), 0);
 
       const statsGrid = document.getElementById("statsGrid");
@@ -1045,7 +1053,7 @@
         statsGrid.classList.add("fournisseur-stats");
         statsGrid.innerHTML = `
           <div class="stat-box"><span>Total Colis</span><strong>${totalColis}</strong></div>
-          <div class="stat-box"><span>Prix Produits</span><strong>${totalNet.toFixed(2)} DT</strong></div>
+          <div class="stat-box"><span>Reste à payer (DT)</span><strong>${resteProduits.toFixed(2)} DT</strong></div>
         `;
       } else {
         statsGrid.classList.remove("fournisseur-stats");
@@ -1053,7 +1061,7 @@
           <div class="stat-box"><span>Total Colis</span><strong>${totalColis}</strong></div>
           <div class="stat-box"><span>Total Client</span><strong>${totalClient.toFixed(2)} DT</strong></div>
           <div class="stat-box"><span>Frais Livraison</span><strong>${totalLiv.toFixed(2)} DT</strong></div>
-          <div class="stat-box"><span>Net Fournisseur</span><strong>${netPayeFournisseur.toFixed(2)} DT</strong></div>
+          <div class="stat-box"><span>Payé Fournisseur</span><strong>${netPayeFournisseur.toFixed(2)} DT</strong></div>
         `;
       }
 
@@ -1100,8 +1108,8 @@
                       <option value="Payé" ${c.statut === "Payé" ? "selected" : ""}>Payé</option>
                       <option value="Payé Fournisseur" ${c.statut === "Payé Fournisseur" ? "selected" : ""}>Payé Fournisseur</option>
                     </select>
-                    <button class="btn btn-sm btn-outline" onclick="openEditModal('${c.id}')">✏️ Modifier</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteColis('${c.id}')">🗑️</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="openEditModal('${c.id}')">✏️ Modifier</button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteColis('${c.id}')">🗑️</button>
                   </div>
                 `
                     : ""
@@ -1147,9 +1155,11 @@
         alert("Aucun colis à inclure dans le bordereau.");
         return;
       }
-      const totalNet = list.reduce((s, c) => s + Number(c.prix_article || 0), 0);
+      const totalNet = list
+        .filter((c) => c.statut !== "Payé Fournisseur")
+        .reduce((s, c) => s + Number(c.prix_article || 0), 0);
       const totalLiv = list.reduce((s, c) => s + Number(c.prix_livraison || 0), 0);
-      const totalClient = totalNet + totalLiv;
+      const totalClient = list.reduce((s, c) => s + Number(c.prix_article || 0) + Number(c.prix_livraison || 0), 0);
 
       if (isFournisseurView()) {
         const rows = list
@@ -1187,7 +1197,7 @@
             <tbody>${rows}</tbody>
             <tfoot>
               <tr>
-                <th colspan="5" style="text-align:right;">TOTAL PRODUITS</th>
+                <th colspan="5" style="text-align:right;">RESTE À PAYER (PRODUITS NON PAYÉS)</th>
                 <th>${totalNet.toFixed(2)} DT</th>
               </tr>
             </tfoot>
@@ -1234,7 +1244,7 @@
             <tbody>${rows}</tbody>
             <tfoot>
               <tr>
-                <th colspan="5" style="text-align:right;">TOTAUX</th>
+                <th colspan="5" style="text-align:right;">TOTAUX (NET = RESTE FOURNISSEUR)</th>
                 <th>${totalClient.toFixed(2)} DT</th>
                 <th>${totalLiv.toFixed(2)} DT</th>
                 <th>${totalNet.toFixed(2)} DT</th>
