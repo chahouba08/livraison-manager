@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#1e1b4b" />
+  <title>Livraison Manager</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Ctext x='50' y='67' font-size='54' text-anchor='middle'%3E%F0%9F%9A%9A%3C/text%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Ctext x='50' y='67' font-size='54' text-anchor='middle'%3E%F0%9F%9A%9A%3C/text%3E%3C/svg%3E" />
+  <link rel="manifest" href='data:application/manifest+json,{"name":"Livraison Manager","short_name":"Livraison","start_url":".","display":"standalone","background_color":"#0f172a","theme_color":"#4f46e5","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%234f46e5%27/%3E%3Ctext x=%2750%27 y=%2767%27 font-size=%2754%27 text-anchor=%27middle%27%3E%F0%9F%9A%9A%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}' />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --primary: #4f46e5;
+      --primary-dark: #3730a3;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --success: #16a34a;
+      --warning: #d97706;
+      --info: #2563eb;
+      --purple: #7c3aed;
+      --danger: #dc2626;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .login-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #312e81 100%);
+    }
+    .login-card {
+      background: #fff;
+      width: 100%;
+      max-width: 400px;
+      border-radius: 24px;
+      padding: 32px 24px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+      text-align: center;
+    }
+    .logo-box {
+      width: 64px;
+      height: 64px;
+      background: var(--primary);
+      border-radius: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin-bottom: 14px;
+      box-shadow: 0 10px 20px rgba(79, 70, 229, 0.35);
+    }
+    h1 { margin: 0 0 6px; font-size: 24px; font-weight: 800; }
+    .subtitle { color: var(--muted); font-size: 13.5px; margin: 0 0 14px; }
+    .conn-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 999px;
+      margin-bottom: 18px;
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .conn-badge.online { background: #dcfce7; color: #166534; }
+    .field { text-align: left; margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      font-size: 15px;
+      background: #f8fafc;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    input:focus, select:focus { border-color: var(--primary); background: #fff; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 14.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--primary); color: #fff; width: 100%; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-dark { background: #0f172a; color: #fff; }
+    .btn-outline { background: #fff; border: 1.5px solid var(--border); color: var(--text); }
+    .btn-danger { background: #fee2e2; color: var(--danger); }
+    .btn-sm { padding: 8px 12px; font-size: 13px; border-radius: 10px; }
+
+    .app-header {
+      background: linear-gradient(135deg, #0f172a, #1e1b4b);
+      color: #fff;
+      padding: 16px 18px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+    }
+    .app-header h2 { margin: 0; font-size: 17px; }
+    .app-header small { color: #cbd5e1; font-size: 12px; display: block; }
+    .container { max-width: 960px; margin: 0 auto; padding: 16px; }
+    .card {
+      background: var(--card);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      border: 1px solid var(--border);
+    }
+    .card-title {
+      font-size: 15.5px;
+      font-weight: 800;
+      margin: 0 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    @media (min-width: 680px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+    .stat-box {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .stat-box span { font-size: 12px; color: var(--muted); font-weight: 600; display: block; }
+    .stat-box strong { font-size: 20px; font-weight: 800; margin-top: 4px; display: block; }
+
+    .tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 14px; }
+    .tab {
+      white-space: nowrap;
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+    }
+    .tab.active { background: var(--primary); color: #fff; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 600px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+
+    .colis-item {
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 13px;
+      margin-bottom: 10px;
+      background: #fff;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .colis-item.selected { border-color: var(--primary); background: #eef2ff; }
+    .colis-check { width: 20px; height: 20px; margin-top: 3px; accent-color: var(--primary); flex-shrink: 0; }
+    .colis-body { flex: 1; min-width: 0; }
+    .colis-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 800;
+    }
+    .st-depot { background: #fef3c7; color: #92400e; }
+    .st-cours { background: #dbeafe; color: #1e40af; }
+    .st-paye { background: #dcfce7; color: #166534; }
+    .st-paye-f { background: #f3e8ff; color: #6b21a8; }
+
+    .meta { font-size: 13px; color: #475569; margin-top: 5px; line-height: 1.45; }
+    .bulk-bar {
+      position: sticky;
+      bottom: 12px;
+      background: #0f172a;
+      color: #fff;
+      padding: 12px 14px;
+      border-radius: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.35);
+      z-index: 40;
+    }
+    .error-msg {
+      background: #fee2e2;
+      color: #b91c1c;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .hidden { display: none !important; }
+
+    /* Bordereau Modal / Print */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      z-index: 100;
+    }
+    .modal-card {
+      background: #fff;
+      width: 100%;
+      max-width: 760px;
+      max-height: 90vh;
+      overflow-y: auto;
+      border-radius: 18px;
+      padding: 20px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+    th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+    th { background: #f1f5f9; }
+    @media print {
+      body * { visibility: hidden; }
+      #bordereauPrintArea, #bordereauPrintArea * { visibility: visible; }
+      #bordereauPrintArea { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN VIEW -->
+  <div id="loginView" class="login-wrapper">
+    <div class="login-card">
+      <div class="logo-box">🚚</div>
+      <h1>Livraison Manager</h1>
+      <p class="subtitle">Plateforme de gestion des colis, livreur et fournisseurs</p>
+      <div id="connStatusLogin" class="conn-badge">● Connexion au serveur...</div>
+      <div id="loginError" class="error-msg"></div>
+      <form id="loginForm">
+        <div class="field">
+          <label>Identifiant / Login</label>
+          <input type="text" id="loginUser" placeholder="Ex: admin ou amal" required autocomplete="username" />
+        </div>
+        <div class="field">
+          <label>Mot de passe</label>
+          <input type="password" id="loginPass" placeholder="••••••••" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn btn-primary">Se connecter</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MAIN APP VIEW -->
+  <div id="appView" class="hidden">
+    <header class="app-header">
+      <div>
+        <h2 id="headerTitle">Livraison Manager</h2>
+        <small id="headerSub">Connecté</small>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn btn-sm btn-outline" onclick="syncData()" title="Actualiser">🔄</button>
+        <button class="btn btn-sm btn-danger" onclick="logout()">Déconnexion</button>
+      </div>
+    </header>
+
+    <div class="container">
+      <!-- LIVREUR NAVIGATION -->
+      <div id="livreurNav" class="tabs hidden">
+        <button class="tab active" data-tab="colis" onclick="switchLivreurTab('colis')">📦 Tous les colis</button>
+        <button class="tab" data-tab="fournisseurs" onclick="switchLivreurTab('fournisseurs')">🏪 Fournisseurs</button>
+        <button class="tab" data-tab="espaceFournisseur" onclick="switchLivreurTab('espaceFournisseur')">👁️ Vue par fournisseur</button>
+      </div>
+
+      <!-- STATS -->
+      <div class="stats-grid" id="statsGrid"></div>
+
+      <!-- SECTION: FOURNISSEURS MANAGEMENT (LIVREUR ONLY) -->
+      <div id="sectionFournisseurs" class="hidden">
+        <div class="card">
+          <div class="card-title">➕ Ajouter un fournisseur</div>
+          <form id="addFournisseurForm" class="grid-2">
+            <input type="text" id="fNom" placeholder="Nom de la boutique / fournisseur" required />
+            <input type="text" id="fLogin" placeholder="Identifiant (login)" required />
+            <input type="text" id="fPass" placeholder="Mot de passe" required />
+            <button type="submit" class="btn btn-primary">Créer le compte</button>
+          </form>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 Liste des fournisseurs</div>
+          <div id="fournisseursList"></div>
+        </div>
+      </div>
+
+      <!-- SECTION: ESPACE FOURNISSEUR SELECTOR (LIVREUR ONLY) -->
+      <div id="sectionSelectFournisseur" class="card hidden">
+        <div class="card-title">🏪 Sélectionner un fournisseur à gérer / consulter</div>
+        <select id="adminFournisseurSelect" onchange="renderColis()"></select>
+      </div>
+
+      <!-- SECTION: COLIS (SHARED BY LIVREUR & FOURNISSEUR) -->
+      <div id="sectionColis">
+        <!-- ADD COLIS FORM -->
+        <div class="card" id="addColisCard">
+          <div class="card-title">➕ Nouveau colis</div>
+          <form id="addColisForm" class="grid-2">
+            <div id="colisFournisseurWrap" class="hidden">
+              <select id="cFournisseur"></select>
+            </div>
+            <input type="text" id="cClient" placeholder="Nom du client" required />
+            <input type="tel" id="cTel" placeholder="Téléphone du client" required />
+            <input type="text" id="cAdresse" placeholder="Adresse / Ville" required />
+            <input type="number" step="0.01" id="cMontant" placeholder="Montant total client (DT)" required />
+            <input type="number" step="0.01" id="cLivraison" value="8" placeholder="Frais de livraison (DT)" required />
+            <button type="submit" class="btn btn-primary" style="grid-column: 1 / -1;">Enregistrer le colis</button>
+          </form>
+        </div>
+
+        <!-- FILTERS & BORDEREAU -->
+        <div class="card">
+          <div class="card-title">
+            <span>📦 Liste des colis</span>
+            <button class="btn btn-sm btn-dark" onclick="openBordereau()">🧾 Générer Bordereau</button>
+          </div>
+          <div class="grid-2" style="margin-bottom:12px;">
+            <input type="text" id="searchInput" placeholder="🔍 Rechercher client, téléphone, adresse..." oninput="renderColis()" />
+            <select id="statusFilter" onchange="renderColis()">
+              <option value="ALL">Tous les statuts</option>
+              <option value="En dépôt">En dépôt</option>
+              <option value="En cours">En cours</option>
+              <option value="Payé">Payé</option>
+              <option value="Payé Fournisseur">Payé Fournisseur</option>
+            </select>
+          </div>
+          <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-outline" onclick="toggleSelectAll()">☑️ Tout sélectionner / désélectionner</button>
+          </div>
+          <div id="colisList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BULK ACTION BAR -->
+    <div id="bulkBar" class="bulk-bar hidden">
+      <div><strong id="selectedCount">0</strong> colis sélectionné(s)</div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button id="btnBulkDepot" class="btn btn-sm btn-outline" onclick="bulkUpdateStatus('En dépôt')">En dépôt</button>
+        <button id="btnBulkCours" class="btn btn-sm btn-outline" onclick="bulkUpdateStatus('En cours')">En cours</button>
+        <button id="btnBulkPaye" class="btn btn-sm btn-success" onclick="bulkUpdateStatus('Payé')">Payé</button>
+        <button id="btnBulkPayeF" class="btn btn-sm btn-primary" onclick="bulkUpdateStatus('Payé Fournisseur')">Payé Fournisseur</button>
+        <button class="btn btn-sm btn-dark" onclick="openBordereau(true)">🧾 Bordereau sélection</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BORDEREAU MODAL -->
+  <div id="bordereauModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <strong>Aperçu du Bordereau</strong>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-sm btn-primary" onclick="window.print()">🖨️ Imprimer / PDF</button>
+          <button class="btn btn-sm btn-danger" onclick="closeBordereau()">Fermer</button>
+        </div>
+      </div>
+      <div id="bordereauPrintArea"></div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://pvdtgwxutzfxohzwbyom.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_V03DVtMLcDV59b3cCaLZSA_aKhtFkNJ";
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const LS_FOURNISSEURS = "lm_fournisseurs_v1";
+    const LS_COLIS = "lm_colis_v1";
+    const LS_SESSION = "lm_session_v1";
+
+    let isOnline = false;
+    let currentUser = null; // { role: 'livreur' } or { role: 'fournisseur', id, nom, login }
+    let currentLivreurTab = "colis";
+    let fournisseurs = [];
+    let colis = [];
+    let selectedIds = new Set();
+
+    function nowFormatted() {
+      const d = new Date();
+      return d.toLocaleDateString("fr-FR") + " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function saveLocal() {
+      localStorage.setItem(LS_FOURNISSEURS, JSON.stringify(fournisseurs));
+      localStorage.setItem(LS_COLIS, JSON.stringify(colis));
+    }
+
+    function loadLocal() {
+      try {
+        fournisseurs = JSON.parse(localStorage.getItem(LS_FOURNISSEURS) || "[]");
+        colis = JSON.parse(localStorage.getItem(LS_COLIS) || "[]");
+      } catch (e) {
+        fournisseurs = [];
+        colis = [];
+      }
+      if (!fournisseurs.length) {
+        fournisseurs = [{ id: "local-1", nom: "Boutique Amal", login: "amal", mot_de_passe: "1234" }];
+      }
+    }
+
+    async function syncData() {
+      const badge = document.getElementById("connStatusLogin");
+      try {
+        const [fRes, cRes] = await Promise.all([
+          sb.from("fournisseurs").select("*").order("created_at", { ascending: true }),
+          sb.from("colis").select("*").order("created_at", { ascending: false })
+        ]);
+        if (fRes.error || cRes.error) throw new Error("Supabase error");
+        fournisseurs = fRes.data || [];
+        colis = cRes.data || [];
+        isOnline = true;
+        saveLocal();
+        if (badge) {
+          badge.textContent = "● Connecté à Supabase (Cloud)";
+          badge.classList.add("online");
+        }
+      } catch (err) {
+        isOnline = false;
+        loadLocal();
+        if (badge) {
+          badge.textContent = "● Hors ligne / Cache local";
+          badge.classList.remove("online");
+        }
+      }
+      if (currentUser) refreshUI();
+    }
+
+    // Login Handler
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const login = document.getElementById("loginUser").value.trim().toLowerCase();
+      const pass = document.getElementById("loginPass").value.trim();
+      const errBox = document.getElementById("loginError");
+      errBox.style.display = "none";
+
+      if (login === "admin" && pass === "123456789") {
+        currentUser = { role: "livreur", nom: "Administrateur / Livreur" };
+        localStorage.setItem(LS_SESSION, JSON.stringify(currentUser));
+        enterApp();
+        return;
+      }
+
+      const found = fournisseurs.find(
+        (f) => String(f.login).toLowerCase() === login && String(f.mot_de_passe) === pass
+      );
+      if (found) {
+        currentUser = { role: "fournisseur", id: found.id, nom: found.nom, login: found.login };
+        localStorage.setItem(LS_SESSION, JSON.stringify(currentUser));
+        enterApp();
+      } else {
+        errBox.textContent = "Identifiant ou mot de passe incorrect.";
+        errBox.style.display = "block";
+      }
+    });
+
+    function enterApp() {
+      document.getElementById("loginView").classList.add("hidden");
+      document.getElementById("appView").classList.remove("hidden");
+      document.getElementById("headerTitle").textContent =
+        currentUser.role === "livreur" ? "Espace Livreur (Admin)" : currentUser.nom;
+      document.getElementById("headerSub").textContent =
+        (currentUser.role === "livreur" ? "Supervision complète" : "Espace Fournisseur") +
+        (isOnline ? " • Supabase en ligne" : " • Mode local");
+
+      if (currentUser.role === "livreur") {
+        document.getElementById("livreurNav").classList.remove("hidden");
+        document.getElementById("colisFournisseurWrap").classList.remove("hidden");
+        switchLivreurTab("colis");
+      } else {
+        document.getElementById("livreurNav").classList.add("hidden");
+        document.getElementById("colisFournisseurWrap").classList.add("hidden");
+        document.getElementById("sectionFournisseurs").classList.add("hidden");
+        document.getElementById("sectionSelectFournisseur").classList.add("hidden");
+        document.getElementById("sectionColis").classList.remove("hidden");
+      }
+      refreshUI();
+    }
+
+    function logout() {
+      localStorage.removeItem(LS_SESSION);
+      currentUser = null;
+      selectedIds.clear();
+      document.getElementById("appView").classList.add("hidden");
+      document.getElementById("loginView").classList.remove("hidden");
+      document.getElementById("loginPass").value = "";
+    }
+
+    function switchLivreurTab(tab) {
+      currentLivreurTab = tab;
+      selectedIds.clear();
+      document.querySelectorAll("#livreurNav .tab").forEach((b) => {
+        b.classList.toggle("active", b.dataset.tab === tab);
+      });
+      document.getElementById("sectionFournisseurs").classList.toggle("hidden", tab !== "fournisseurs");
+      document.getElementById("sectionSelectFournisseur").classList.toggle("hidden", tab !== "espaceFournisseur");
+      document.getElementById("sectionColis").classList.toggle("hidden", tab === "fournisseurs");
+      refreshUI();
+    }
+
+    // Add Fournisseur
+    document.getElementById("addFournisseurForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nom = document.getElementById("fNom").value.trim();
+      const login = document.getElementById("fLogin").value.trim().toLowerCase();
+      const mot_de_passe = document.getElementById("fPass").value.trim();
+      if (!nom || !login || !mot_de_passe) return;
+
+      if (fournisseurs.some((f) => String(f.login).toLowerCase() === login) || login === "admin") {
+        alert("Cet identifiant existe déjà.");
+        return;
+      }
+
+      const newF = { nom, login, mot_de_passe };
+      if (isOnline) {
+        const { data, error } = await sb.from("fournisseurs").insert([newF]).select().single();
+        if (!error && data) {
+          fournisseurs.push(data);
+        } else {
+          alert("Erreur lors de l'enregistrement sur Supabase.");
+          return;
+        }
+      } else {
+        fournisseurs.push({ id: "local-" + Date.now(), ...newF });
+      }
+      saveLocal();
+      e.target.reset();
+      refreshUI();
+    });
+
+    async function deleteFournisseur(id) {
+      if (!confirm("Supprimer ce fournisseur ?")) return;
+      if (isOnline) {
+        await sb.from("fournisseurs").delete().eq("id", id);
+      }
+      fournisseurs = fournisseurs.filter((f) => String(f.id) !== String(id));
+      saveLocal();
+      refreshUI();
+    }
+
+    // Add Colis
+    document.getElementById("addColisForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      let fournisseur_id = currentUser.id;
+      if (currentUser.role === "livreur") {
+        fournisseur_id =
+          currentLivreurTab === "espaceFournisseur"
+            ? document.getElementById("adminFournisseurSelect").value
+            : document.getElementById("cFournisseur").value;
+      }
+      if (!fournisseur_id) {
+        alert("Veuillez sélectionner un fournisseur.");
+        return;
+      }
+
+      const client_nom = document.getElementById("cClient").value.trim();
+      const client_tel = document.getElementById("cTel").value.trim();
+      const adresse = document.getElementById("cAdresse").value.trim();
+      const montant = parseFloat(document.getElementById("cMontant").value) || 0;
+      const frais_livraison = parseFloat(document.getElementById("cLivraison").value) || 8;
+      const statut = "En dépôt";
+      const date_maj = nowFormatted();
+
+      const item = { fournisseur_id, client_nom, client_tel, adresse, montant, frais_livraison, statut, date_maj };
+
+      if (isOnline) {
+        const { data, error } = await sb.from("colis").insert([item]).select().single();
+        if (!error && data) {
+          colis.unshift(data);
+        } else {
+          alert("Erreur Supabase lors de l'ajout du colis.");
+          return;
+        }
+      } else {
+        colis.unshift({ id: "c-" + Date.now(), ...item });
+      }
+      saveLocal();
+      document.getElementById("cClient").value = "";
+      document.getElementById("cTel").value = "";
+      document.getElementById("cAdresse").value = "";
+      document.getElementById("cMontant").value = "";
+      document.getElementById("cLivraison").value = "8";
+      refreshUI();
+    });
+
+    async function updateColisStatus(id, newStatus) {
+      const date_maj = nowFormatted();
+      if (isOnline) {
+        await sb.from("colis").update({ statut: newStatus, date_maj }).eq("id", id);
+      }
+      colis = colis.map((c) => (String(c.id) === String(id) ? { ...c, statut: newStatus, date_maj } : c));
+      saveLocal();
+      refreshUI();
+    }
+
+    async function bulkUpdateStatus(newStatus) {
+      if (!selectedIds.size) return;
+      const ids = Array.from(selectedIds);
+      const date_maj = nowFormatted();
+      if (isOnline) {
+        await sb.from("colis").update({ statut: newStatus, date_maj }).in("id", ids);
+      }
+      colis = colis.map((c) => (selectedIds.has(String(c.id)) ? { ...c, statut: newStatus, date_maj } : c));
+      selectedIds.clear();
+      saveLocal();
+      refreshUI();
+    }
+
+    async function deleteColis(id) {
+      if (!confirm("Supprimer ce colis ?")) return;
+      if (isOnline) {
+        await sb.from("colis").delete().eq("id", id);
+      }
+      colis = colis.filter((c) => String(c.id) !== String(id));
+      selectedIds.delete(String(id));
+      saveLocal();
+      refreshUI();
+    }
+
+    function getVisibleColis() {
+      let list = [...colis];
+      if (currentUser.role === "fournisseur") {
+        list = list.filter((c) => String(c.fournisseur_id) === String(currentUser.id));
+      } else if (currentLivreurTab === "espaceFournisseur") {
+        const fid = document.getElementById("adminFournisseurSelect").value;
+        list = list.filter((c) => String(c.fournisseur_id) === String(fid));
+      }
+      const q = (document.getElementById("searchInput").value || "").trim().toLowerCase();
+      const st = document.getElementById("statusFilter").value;
+      if (st !== "ALL") list = list.filter((c) => c.statut === st);
+      if (q) {
+        list = list.filter(
+          (c) =>
+            String(c.client_nom).toLowerCase().includes(q) ||
+            String(c.client_tel).toLowerCase().includes(q) ||
+            String(c.adresse).toLowerCase().includes(q)
+        );
+      }
+      return list;
+    }
+
+    function getFournisseurName(fid) {
+      const f = fournisseurs.find((x) => String(x.id) === String(fid));
+      return f ? f.nom : "Fournisseur";
+    }
+
+    function statusClass(st) {
+      if (st === "En dépôt") return "st-depot";
+      if (st === "En cours") return "st-cours";
+      if (st === "Payé") return "st-paye";
+      return "st-paye-f";
+    }
+
+    function refreshUI() {
+      // Populate selects
+      const opts = fournisseurs.map((f) => `<option value="${f.id}">${f.nom} (${f.login})</option>`).join("");
+      const prevAdminSel = document.getElementById("adminFournisseurSelect").value;
+      document.getElementById("cFournisseur").innerHTML = opts;
+      document.getElementById("adminFournisseurSelect").innerHTML = opts;
+      if (prevAdminSel) document.getElementById("adminFournisseurSelect").value = prevAdminSel;
+
+      // Render Fournisseurs List
+      document.getElementById("fournisseursList").innerHTML = fournisseurs.length
+        ? fournisseurs
+            .map(
+              (f) => `
+          <div class="colis-item" style="justify-content:space-between; align-items:center;">
+            <div>
+              <strong>${f.nom}</strong>
+              <div class="meta">Login: <code>${f.login}</code> • Mot de passe: <code>${f.mot_de_passe}</code></div>
+            </div>
+            <button class="btn btn-sm btn-danger" onclick="deleteFournisseur('${f.id}')">Supprimer</button>
+          </div>`
+            )
+            .join("")
+        : "<p class='meta'>Aucun fournisseur enregistré.</p>";
+
+      renderColis();
+    }
+
+    function renderColis() {
+      const visible = getVisibleColis();
+      const totalColis = visible.length;
+      const totalMontant = visible.reduce((s, c) => s + Number(c.montant || 0), 0);
+      const totalLiv = visible.reduce((s, c) => s + Number(c.frais_livraison || 0), 0);
+      const netFournisseur = visible
+        .filter((c) => c.statut === "Payé" || c.statut === "Payé Fournisseur")
+        .reduce((s, c) => s + (Number(c.montant || 0) - Number(c.frais_livraison || 0)), 0);
+
+      document.getElementById("statsGrid").innerHTML = `
+        <div class="stat-box"><span>Total Colis</span><strong>${totalColis}</strong></div>
+        <div class="stat-box"><span>Montant Total</span><strong>${totalMontant.toFixed(2)} DT</strong></div>
+        <div class="stat-box"><span>Frais Livraison</span><strong>${totalLiv.toFixed(2)} DT</strong></div>
+        <div class="stat-box"><span>Net Fournisseur</span><strong>${netFournisseur.toFixed(2)} DT</strong></div>
+      `;
+
+      // Configure bulk buttons according to role
+      const isLivreur = currentUser.role === "livreur";
+      document.getElementById("btnBulkDepot").classList.toggle("hidden", !isLivreur);
+      document.getElementById("btnBulkCours").classList.toggle("hidden", !isLivreur);
+      document.getElementById("btnBulkPaye").classList.toggle("hidden", !isLivreur);
+
+      const container = document.getElementById("colisList");
+      if (!visible.length) {
+        container.innerHTML = "<p class='meta'>Aucun colis trouvé pour ces critères.</p>";
+      } else {
+        container.innerHTML = visible
+          .map((c) => {
+            const checked = selectedIds.has(String(c.id));
+            const net = (Number(c.montant || 0) - Number(c.frais_livraison || 0)).toFixed(2);
+            return `
+            <div class="colis-item ${checked ? "selected" : ""}">
+              <input type="checkbox" class="colis-check" ${checked ? "checked" : ""} onchange="toggleSelect('${c.id}')" />
+              <div class="colis-body">
+                <div class="colis-top">
+                  <strong>${c.client_nom} • ${c.client_tel}</strong>
+                  <span class="badge ${statusClass(c.statut)}">${c.statut}</span>
+                </div>
+                <div class="meta">
+                  🏪 <strong>${getFournisseurName(c.fournisseur_id)}</strong> • 📍 ${c.adresse}<br/>
+                  💰 Total: <strong>${Number(c.montant).toFixed(2)} DT</strong> | 🚚 Livraison: ${Number(c.frais_livraison).toFixed(2)} DT | 🧾 Net: <strong>${net} DT</strong><br/>
+                  🕒 Dernière mise à jour: ${c.date_maj || "-"}
+                </div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;">
+                  ${
+                    isLivreur
+                      ? `
+                    <select style="width:auto; padding:6px 10px; font-size:13px;" onchange="updateColisStatus('${c.id}', this.value)">
+                      <option value="En dépôt" ${c.statut === "En dépôt" ? "selected" : ""}>En dépôt</option>
+                      <option value="En cours" ${c.statut === "En cours" ? "selected" : ""}>En cours</option>
+                      <option value="Payé" ${c.statut === "Payé" ? "selected" : ""}>Payé</option>
+                      <option value="Payé Fournisseur" ${c.statut === "Payé Fournisseur" ? "selected" : ""}>Payé Fournisseur</option>
+                    </select>
+                    <button class="btn btn-sm btn-danger" onclick="deleteColis('${c.id}')">🗑️</button>
+                  `
+                      : `
+                    ${
+                      c.statut !== "Payé Fournisseur"
+                        ? `<button class="btn btn-sm btn-primary" onclick="updateColisStatus('${c.id}', 'Payé Fournisseur')">Marquer Payé Fournisseur</button>`
+                        : ""
+                    }
+                  `
+                  }
+                </div>
+              </div>
+            </div>`;
+          })
+          .join("");
+      }
+      updateBulkBar();
+    }
+
+    function toggleSelect(id) {
+      const key = String(id);
+      if (selectedIds.has(key)) selectedIds.delete(key);
+      else selectedIds.add(key);
+      renderColis();
+    }
+
+    function toggleSelectAll() {
+      const visible = getVisibleColis();
+      const allSelected = visible.length > 0 && visible.every((c) => selectedIds.has(String(c.id)));
+      if (allSelected) {
+        visible.forEach((c) => selectedIds.delete(String(c.id)));
+      } else {
+        visible.forEach((c) => selectedIds.add(String(c.id)));
+      }
+      renderColis();
+    }
+
+    function updateBulkBar() {
+      const bar = document.getElementById("bulkBar");
+      document.getElementById("selectedCount").textContent = selectedIds.size;
+      bar.classList.toggle("hidden", selectedIds.size === 0);
+    }
+
+    function openBordereau(onlySelected = false) {
+      let list = getVisibleColis();
+      if (onlySelected && selectedIds.size > 0) {
+        list = list.filter((c) => selectedIds.has(String(c.id)));
+      }
+      if (!list.length) {
+        alert("Aucun colis à inclure dans le bordereau.");
+        return;
+      }
+      const totalMontant = list.reduce((s, c) => s + Number(c.montant || 0), 0);
+      const totalLiv = list.reduce((s, c) => s + Number(c.frais_livraison || 0), 0);
+      const totalNet = totalMontant - totalLiv;
+
+      const rows = list
+        .map(
+          (c, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${getFournisseurName(c.fournisseur_id)}</td>
+          <td>${c.client_nom}<br/><small>${c.client_tel}</small></td>
+          <td>${c.adresse}</td>
+          <td>${c.statut}<br/><small>${c.date_maj || ""}</small></td>
+          <td>${Number(c.montant).toFixed(2)}</td>
+          <td>${Number(c.frais_livraison).toFixed(2)}</td>
+          <td><strong>${(Number(c.montant) - Number(c.frais_livraison)).toFixed(2)}</strong></td>
+        </tr>`
+        )
+        .join("");
+
+      document.getElementById("bordereauPrintArea").innerHTML = `
+        <h2 style="margin:0 0 4px;">Bordereau de Livraison & Paiement</h2>
+        <p style="margin:0 0 12px; color:#475569; font-size:13px;">Édité le : <strong>${nowFormatted()}</strong> • Nombre de colis : <strong>${list.length}</strong></p>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Fournisseur</th>
+              <th>Client</th>
+              <th>Adresse</th>
+              <th>Statut & Date</th>
+              <th>Total (DT)</th>
+              <th>Liv. (DT)</th>
+              <th>Net (DT)</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+          <tfoot>
+            <tr>
+              <th colspan="5" style="text-align:right;">TOTAUX</th>
+              <th>${totalMontant.toFixed(2)} DT</th>
+              <th>${totalLiv.toFixed(2)} DT</th>
+              <th>${totalNet.toFixed(2)} DT</th>
+            </tr>
+          </tfoot>
+        </table>
+      `;
+      document.getElementById("bordereauModal").classList.remove("hidden");
+    }
+
+    function closeBordereau() {
+      document.getElementById("bordereauModal").classList.add("hidden");
+    }
+
+    // Boot
+    (async function init() {
+      await syncData();
+      try {
+        const saved = JSON.parse(localStorage.getItem(LS_SESSION) || "null");
+        if (saved && saved.role) {
+          currentUser = saved;
+          enterApp();
+        }
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>
