@@ -161,6 +161,9 @@
       margin-bottom: 16px;
     }
     @media (min-width: 680px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+    .stats-grid.fournisseur-stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
     .stat-box {
       background: #fff;
       border: 1px solid var(--border);
@@ -377,7 +380,7 @@
             <input type="tel" id="cTel" placeholder="Numéro de téléphone" required />
             <input type="text" id="cAdresse" placeholder="Adresse / Ville" required />
             <input type="text" id="cArticle" placeholder="Article / Désignation" />
-            <input type="number" step="0.01" id="cMontant" placeholder="Prix article / Total client (DT)" required />
+            <input type="number" step="0.01" id="cMontant" placeholder="Prix produit (DT)" required />
             <input type="number" step="0.01" id="cLivraison" value="8" placeholder="Frais de livraison (DT)" required />
             <button type="submit" class="btn btn-primary" style="grid-column: 1 / -1;">Enregistrer le colis</button>
           </form>
@@ -447,6 +450,10 @@
     let colis = [];
     let selectedIds = new Set();
 
+    function isFournisseurView() {
+      return currentUser && currentUser.role === "fournisseur";
+    }
+
     function formatDate(isoOrDate) {
       if (!isoOrDate) return "-";
       const d = new Date(isoOrDate);
@@ -478,7 +485,7 @@
       document.getElementById("cAdresse").value = "";
       document.getElementById("cArticle").value = "";
       document.getElementById("cMontant").value = "";
-      document.getElementById("cLivraison").value = "";
+      document.getElementById("cLivraison").value = isFournisseurView() ? "0" : "8";
       document.getElementById("cClient").focus();
     }
 
@@ -560,9 +567,13 @@
         (currentUser.role === "livreur" ? "Supervision complète" : "Espace Fournisseur") +
         (isOnline ? " • Supabase en ligne" : " • Mode local");
 
+      const livInput = document.getElementById("cLivraison");
       if (currentUser.role === "livreur") {
         document.getElementById("livreurNav").classList.remove("hidden");
         document.getElementById("colisFournisseurWrap").classList.remove("hidden");
+        livInput.classList.remove("hidden");
+        livInput.required = true;
+        if (!livInput.value) livInput.value = "8";
         switchLivreurTab(currentLivreurTab || "colis");
       } else {
         document.getElementById("livreurNav").classList.add("hidden");
@@ -570,6 +581,9 @@
         document.getElementById("sectionFournisseurs").classList.add("hidden");
         document.getElementById("sectionSelectFournisseur").classList.add("hidden");
         document.getElementById("sectionColis").classList.remove("hidden");
+        livInput.classList.add("hidden");
+        livInput.required = false;
+        livInput.value = "0";
       }
       refreshUI();
     }
@@ -654,7 +668,7 @@
       const article = document.getElementById("cArticle").value.trim() || "Colis";
       const prix_article = parseFloat(document.getElementById("cMontant").value) || 0;
       const livRaw = document.getElementById("cLivraison").value.trim();
-      const prix_livraison = livRaw === "" ? 0 : parseFloat(livRaw) || 0;
+      const prix_livraison = isFournisseurView() ? 0 : (livRaw === "" ? 0 : parseFloat(livRaw) || 0);
       const statut = "En dépôt";
 
       const item = {
@@ -685,7 +699,7 @@
       document.getElementById("cAdresse").value = "";
       document.getElementById("cArticle").value = "";
       document.getElementById("cMontant").value = "";
-      document.getElementById("cLivraison").value = "8";
+      document.getElementById("cLivraison").value = isFournisseurView() ? "0" : "8";
       refreshUI();
     });
 
@@ -821,12 +835,22 @@
         .filter((c) => c.statut === "Payé" || c.statut === "Payé Fournisseur")
         .reduce((s, c) => s + (Number(c.prix_article || 0) - Number(c.prix_livraison || 0)), 0);
 
-      document.getElementById("statsGrid").innerHTML = `
-        <div class="stat-box"><span>Total Colis</span><strong>${totalColis}</strong></div>
-        <div class="stat-box"><span>Montant Total</span><strong>${totalMontant.toFixed(2)} DT</strong></div>
-        <div class="stat-box"><span>Frais Livraison</span><strong>${totalLiv.toFixed(2)} DT</strong></div>
-        <div class="stat-box"><span>Net Fournisseur</span><strong>${netFournisseur.toFixed(2)} DT</strong></div>
-      `;
+      const statsGrid = document.getElementById("statsGrid");
+      if (isFournisseurView()) {
+        statsGrid.classList.add("fournisseur-stats");
+        statsGrid.innerHTML = `
+          <div class="stat-box"><span>Total Colis</span><strong>${totalColis}</strong></div>
+          <div class="stat-box"><span>Prix Produits</span><strong>${totalMontant.toFixed(2)} DT</strong></div>
+        `;
+      } else {
+        statsGrid.classList.remove("fournisseur-stats");
+        statsGrid.innerHTML = `
+          <div class="stat-box"><span>Total Colis</span><strong>${totalColis}</strong></div>
+          <div class="stat-box"><span>Montant Total</span><strong>${totalMontant.toFixed(2)} DT</strong></div>
+          <div class="stat-box"><span>Frais Livraison</span><strong>${totalLiv.toFixed(2)} DT</strong></div>
+          <div class="stat-box"><span>Net Fournisseur</span><strong>${netFournisseur.toFixed(2)} DT</strong></div>
+        `;
+      }
 
       const isLivreur = currentUser.role === "livreur";
       document.getElementById("btnBulkDepot").classList.toggle("hidden", !isLivreur);
@@ -844,6 +868,9 @@
             const liv = Number(c.prix_livraison || 0);
             const net = (montant - liv).toFixed(2);
             const majDate = formatDate(c.settled_at || c.created_at);
+            const priceLine = isFournisseurView()
+              ? `💰 Prix produit: <strong>${montant.toFixed(2)} DT</strong>`
+              : `💰 Total: <strong>${montant.toFixed(2)} DT</strong> | 🚚 Livraison: ${liv.toFixed(2)} DT | 🧾 Net: <strong>${net} DT</strong>`;
             return `
             <div class="colis-item ${checked ? "selected" : ""}">
               <input type="checkbox" class="colis-check" ${checked ? "checked" : ""} onchange="toggleSelect('${c.id}')" />
@@ -854,7 +881,7 @@
                 </div>
                 <div class="meta">
                   🏪 <strong>${getFournisseurName(c.fournisseur_id)}</strong> • 📦 ${c.article || "-"} • 📍 ${c.adresse || ""}<br/>
-                  💰 Total: <strong>${montant.toFixed(2)} DT</strong> | 🚚 Livraison: ${liv.toFixed(2)} DT | 🧾 Net: <strong>${net} DT</strong><br/>
+                  ${priceLine}<br/>
                   🕒 Date: ${majDate}
                 </div>
                 <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;">
@@ -923,49 +950,89 @@
       const totalLiv = list.reduce((s, c) => s + Number(c.prix_livraison || 0), 0);
       const totalNet = totalMontant - totalLiv;
 
-      const rows = list
-        .map(
-          (c, idx) => `
-        <tr>
-          <td>${idx + 1}</td>
-          <td>${getFournisseurName(c.fournisseur_id)}</td>
-          <td>${c.client_nom || ""}<br/><small>${c.telephone || ""}</small></td>
-          <td>${c.adresse || ""}</td>
-          <td>${c.statut}<br/><small>${formatDate(c.settled_at || c.created_at)}</small></td>
-          <td>${Number(c.prix_article || 0).toFixed(2)}</td>
-          <td>${Number(c.prix_livraison || 0).toFixed(2)}</td>
-          <td><strong>${(Number(c.prix_article || 0) - Number(c.prix_livraison || 0)).toFixed(2)}</strong></td>
-        </tr>`
-        )
-        .join("");
+      if (isFournisseurView()) {
+        const rows = list
+          .map(
+            (c, idx) => `
+          <tr>
+            <td>${idx + 1}</td>
+            <td>${c.client_nom || ""}<br/><small>${c.telephone || ""}</small></td>
+            <td>${c.adresse || ""}</td>
+            <td>${c.article || "-"}</td>
+            <td>${c.statut}<br/><small>${formatDate(c.settled_at || c.created_at)}</small></td>
+            <td><strong>${Number(c.prix_article || 0).toFixed(2)}</strong></td>
+          </tr>`
+          )
+          .join("");
 
-      document.getElementById("bordereauPrintArea").innerHTML = `
-        <h2 style="margin:0 0 4px;">Bordereau de Livraison & Paiement</h2>
-        <p style="margin:0 0 12px; color:#475569; font-size:13px;">Édité le : <strong>${formatDate(new Date())}</strong> • Nombre de colis : <strong>${list.length}</strong></p>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Fournisseur</th>
-              <th>Client</th>
-              <th>Adresse</th>
-              <th>Statut & Date</th>
-              <th>Total (DT)</th>
-              <th>Liv. (DT)</th>
-              <th>Net (DT)</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-          <tfoot>
-            <tr>
-              <th colspan="5" style="text-align:right;">TOTAUX</th>
-              <th>${totalMontant.toFixed(2)} DT</th>
-              <th>${totalLiv.toFixed(2)} DT</th>
-              <th>${totalNet.toFixed(2)} DT</th>
-            </tr>
-          </tfoot>
-        </table>
-      `;
+        document.getElementById("bordereauPrintArea").innerHTML = `
+          <h2 style="margin:0 0 4px;">Bordereau Fournisseur — ${currentUser.nom}</h2>
+          <p style="margin:0 0 12px; color:#475569; font-size:13px;">Édité le : <strong>${formatDate(new Date())}</strong> • Nombre de colis : <strong>${list.length}</strong></p>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Client</th>
+                <th>Adresse</th>
+                <th>Article</th>
+                <th>Statut & Date</th>
+                <th>Prix produit (DT)</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+              <tr>
+                <th colspan="5" style="text-align:right;">TOTAL PRODUITS</th>
+                <th>${totalMontant.toFixed(2)} DT</th>
+              </tr>
+            </tfoot>
+          </table>
+        `;
+      } else {
+        const rows = list
+          .map(
+            (c, idx) => `
+          <tr>
+            <td>${idx + 1}</td>
+            <td>${getFournisseurName(c.fournisseur_id)}</td>
+            <td>${c.client_nom || ""}<br/><small>${c.telephone || ""}</small></td>
+            <td>${c.adresse || ""}</td>
+            <td>${c.statut}<br/><small>${formatDate(c.settled_at || c.created_at)}</small></td>
+            <td>${Number(c.prix_article || 0).toFixed(2)}</td>
+            <td>${Number(c.prix_livraison || 0).toFixed(2)}</td>
+            <td><strong>${(Number(c.prix_article || 0) - Number(c.prix_livraison || 0)).toFixed(2)}</strong></td>
+          </tr>`
+          )
+          .join("");
+
+        document.getElementById("bordereauPrintArea").innerHTML = `
+          <h2 style="margin:0 0 4px;">Bordereau de Livraison & Paiement</h2>
+          <p style="margin:0 0 12px; color:#475569; font-size:13px;">Édité le : <strong>${formatDate(new Date())}</strong> • Nombre de colis : <strong>${list.length}</strong></p>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Fournisseur</th>
+                <th>Client</th>
+                <th>Adresse</th>
+                <th>Statut & Date</th>
+                <th>Total (DT)</th>
+                <th>Liv. (DT)</th>
+                <th>Net (DT)</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+              <tr>
+                <th colspan="5" style="text-align:right;">TOTAUX</th>
+                <th>${totalMontant.toFixed(2)} DT</th>
+                <th>${totalLiv.toFixed(2)} DT</th>
+                <th>${totalNet.toFixed(2)} DT</th>
+              </tr>
+            </tfoot>
+          </table>
+        `;
+      }
       document.getElementById("bordereauModal").classList.remove("hidden");
     }
 
