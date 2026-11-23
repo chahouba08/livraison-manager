@@ -10,7 +10,6 @@
   <title>Livraison Manager</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Ctext x='50' y='67' font-size='54' text-anchor='middle'%3E%F0%9F%9A%9A%3C/text%3E%3C/svg%3E" />
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Ctext x='50' y='67' font-size='54' text-anchor='middle'%3E%F0%9F%9A%9A%3C/text%3E%3C/svg%3E" />
-  <link rel="manifest" href='data:application/manifest+json,{"name":"Livraison Manager","short_name":"Livraison","start_url":".","display":"standalone","background_color":"#0f172a","theme_color":"#4f46e5","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%234f46e5%27/%3E%3Ctext x=%2750%27 y=%2767%27 font-size=%2754%27 text-anchor=%27middle%27%3E%F0%9F%9A%9A%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}' />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -241,7 +240,6 @@
     }
     .hidden { display: none !important; }
 
-    /* Bordereau Modal / Print */
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -352,10 +350,11 @@
             <div id="colisFournisseurWrap" class="hidden">
               <select id="cFournisseur"></select>
             </div>
+            <input type="text" id="cArticle" placeholder="Article / Désignation" />
             <input type="text" id="cClient" placeholder="Nom du client" required />
             <input type="tel" id="cTel" placeholder="Téléphone du client" required />
             <input type="text" id="cAdresse" placeholder="Adresse / Ville" required />
-            <input type="number" step="0.01" id="cMontant" placeholder="Montant total client (DT)" required />
+            <input type="number" step="0.01" id="cMontant" placeholder="Prix article / Total client (DT)" required />
             <input type="number" step="0.01" id="cLivraison" value="8" placeholder="Frais de livraison (DT)" required />
             <button type="submit" class="btn btn-primary" style="grid-column: 1 / -1;">Enregistrer le colis</button>
           </form>
@@ -422,14 +421,16 @@
     const LS_SESSION = "lm_session_v1";
 
     let isOnline = false;
-    let currentUser = null; // { role: 'livreur' } or { role: 'fournisseur', id, nom, login }
+    let currentUser = null;
     let currentLivreurTab = "colis";
     let fournisseurs = [];
     let colis = [];
     let selectedIds = new Set();
 
-    function nowFormatted() {
-      const d = new Date();
+    function formatDate(isoOrDate) {
+      if (!isoOrDate) return "-";
+      const d = new Date(isoOrDate);
+      if (isNaN(d.getTime())) return String(isoOrDate);
       return d.toLocaleDateString("fr-FR") + " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
     }
 
@@ -455,10 +456,12 @@
       const badge = document.getElementById("connStatusLogin");
       try {
         const [fRes, cRes] = await Promise.all([
-          sb.from("fournisseurs").select("*").order("created_at", { ascending: true }),
+          sb.from("fournisseurs").select("*"),
           sb.from("colis").select("*").order("created_at", { ascending: false })
         ]);
-        if (fRes.error || cRes.error) throw new Error("Supabase error");
+        if (fRes.error || cRes.error) {
+          throw new Error((fRes.error || cRes.error).message || "Supabase error");
+        }
         fournisseurs = fRes.data || [];
         colis = cRes.data || [];
         isOnline = true;
@@ -468,6 +471,7 @@
           badge.classList.add("online");
         }
       } catch (err) {
+        console.error("Sync error:", err);
         isOnline = false;
         loadLocal();
         if (badge) {
@@ -475,10 +479,9 @@
           badge.classList.remove("online");
         }
       }
-      if (currentUser) refreshUI();
+      if (currentUser) enterApp();
     }
 
-    // Login Handler
     document.getElementById("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const login = document.getElementById("loginUser").value.trim().toLowerCase();
@@ -518,7 +521,7 @@
       if (currentUser.role === "livreur") {
         document.getElementById("livreurNav").classList.remove("hidden");
         document.getElementById("colisFournisseurWrap").classList.remove("hidden");
-        switchLivreurTab("colis");
+        switchLivreurTab(currentLivreurTab || "colis");
       } else {
         document.getElementById("livreurNav").classList.add("hidden");
         document.getElementById("colisFournisseurWrap").classList.add("hidden");
@@ -550,7 +553,6 @@
       refreshUI();
     }
 
-    // Add Fournisseur
     document.getElementById("addFournisseurForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const nom = document.getElementById("fNom").value.trim();
@@ -569,7 +571,7 @@
         if (!error && data) {
           fournisseurs.push(data);
         } else {
-          alert("Erreur lors de l'enregistrement sur Supabase.");
+          alert("Erreur lors de l'enregistrement sur Supabase: " + (error?.message || ""));
           return;
         }
       } else {
@@ -590,7 +592,6 @@
       refreshUI();
     }
 
-    // Add Colis
     document.getElementById("addColisForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       let fournisseur_id = currentUser.id;
@@ -605,28 +606,38 @@
         return;
       }
 
+      const article = document.getElementById("cArticle").value.trim() || "Colis";
       const client_nom = document.getElementById("cClient").value.trim();
-      const client_tel = document.getElementById("cTel").value.trim();
+      const telephone = document.getElementById("cTel").value.trim();
       const adresse = document.getElementById("cAdresse").value.trim();
-      const montant = parseFloat(document.getElementById("cMontant").value) || 0;
-      const frais_livraison = parseFloat(document.getElementById("cLivraison").value) || 8;
+      const prix_article = parseFloat(document.getElementById("cMontant").value) || 0;
+      const prix_livraison = parseFloat(document.getElementById("cLivraison").value) || 8;
       const statut = "En dépôt";
-      const date_maj = nowFormatted();
 
-      const item = { fournisseur_id, client_nom, client_tel, adresse, montant, frais_livraison, statut, date_maj };
+      const item = {
+        fournisseur_id,
+        article,
+        client_nom,
+        telephone,
+        adresse,
+        prix_article,
+        prix_livraison,
+        statut
+      };
 
       if (isOnline) {
         const { data, error } = await sb.from("colis").insert([item]).select().single();
         if (!error && data) {
           colis.unshift(data);
         } else {
-          alert("Erreur Supabase lors de l'ajout du colis.");
+          alert("Erreur Supabase lors de l'ajout du colis: " + (error?.message || ""));
           return;
         }
       } else {
-        colis.unshift({ id: "c-" + Date.now(), ...item });
+        colis.unshift({ id: "c-" + Date.now(), created_at: new Date().toISOString(), ...item });
       }
       saveLocal();
+      document.getElementById("cArticle").value = "";
       document.getElementById("cClient").value = "";
       document.getElementById("cTel").value = "";
       document.getElementById("cAdresse").value = "";
@@ -636,11 +647,18 @@
     });
 
     async function updateColisStatus(id, newStatus) {
-      const date_maj = nowFormatted();
-      if (isOnline) {
-        await sb.from("colis").update({ statut: newStatus, date_maj }).eq("id", id);
+      const patch = { statut: newStatus };
+      if (newStatus === "Payé Fournisseur") {
+        patch.settled_at = new Date().toISOString();
       }
-      colis = colis.map((c) => (String(c.id) === String(id) ? { ...c, statut: newStatus, date_maj } : c));
+      if (isOnline) {
+        const { error } = await sb.from("colis").update(patch).eq("id", id);
+        if (error) {
+          alert("Erreur Supabase: " + error.message);
+          return;
+        }
+      }
+      colis = colis.map((c) => (String(c.id) === String(id) ? { ...c, ...patch } : c));
       saveLocal();
       refreshUI();
     }
@@ -648,11 +666,18 @@
     async function bulkUpdateStatus(newStatus) {
       if (!selectedIds.size) return;
       const ids = Array.from(selectedIds);
-      const date_maj = nowFormatted();
-      if (isOnline) {
-        await sb.from("colis").update({ statut: newStatus, date_maj }).in("id", ids);
+      const patch = { statut: newStatus };
+      if (newStatus === "Payé Fournisseur") {
+        patch.settled_at = new Date().toISOString();
       }
-      colis = colis.map((c) => (selectedIds.has(String(c.id)) ? { ...c, statut: newStatus, date_maj } : c));
+      if (isOnline) {
+        const { error } = await sb.from("colis").update(patch).in("id", ids);
+        if (error) {
+          alert("Erreur Supabase: " + error.message);
+          return;
+        }
+      }
+      colis = colis.map((c) => (selectedIds.has(String(c.id)) ? { ...c, ...patch } : c));
       selectedIds.clear();
       saveLocal();
       refreshUI();
@@ -683,9 +708,10 @@
       if (q) {
         list = list.filter(
           (c) =>
-            String(c.client_nom).toLowerCase().includes(q) ||
-            String(c.client_tel).toLowerCase().includes(q) ||
-            String(c.adresse).toLowerCase().includes(q)
+            String(c.client_nom || "").toLowerCase().includes(q) ||
+            String(c.telephone || "").toLowerCase().includes(q) ||
+            String(c.adresse || "").toLowerCase().includes(q) ||
+            String(c.article || "").toLowerCase().includes(q)
         );
       }
       return list;
@@ -704,14 +730,12 @@
     }
 
     function refreshUI() {
-      // Populate selects
       const opts = fournisseurs.map((f) => `<option value="${f.id}">${f.nom} (${f.login})</option>`).join("");
       const prevAdminSel = document.getElementById("adminFournisseurSelect").value;
       document.getElementById("cFournisseur").innerHTML = opts;
       document.getElementById("adminFournisseurSelect").innerHTML = opts;
       if (prevAdminSel) document.getElementById("adminFournisseurSelect").value = prevAdminSel;
 
-      // Render Fournisseurs List
       document.getElementById("fournisseursList").innerHTML = fournisseurs.length
         ? fournisseurs
             .map(
@@ -733,11 +757,11 @@
     function renderColis() {
       const visible = getVisibleColis();
       const totalColis = visible.length;
-      const totalMontant = visible.reduce((s, c) => s + Number(c.montant || 0), 0);
-      const totalLiv = visible.reduce((s, c) => s + Number(c.frais_livraison || 0), 0);
+      const totalMontant = visible.reduce((s, c) => s + Number(c.prix_article || 0), 0);
+      const totalLiv = visible.reduce((s, c) => s + Number(c.prix_livraison || 0), 0);
       const netFournisseur = visible
         .filter((c) => c.statut === "Payé" || c.statut === "Payé Fournisseur")
-        .reduce((s, c) => s + (Number(c.montant || 0) - Number(c.frais_livraison || 0)), 0);
+        .reduce((s, c) => s + (Number(c.prix_article || 0) - Number(c.prix_livraison || 0)), 0);
 
       document.getElementById("statsGrid").innerHTML = `
         <div class="stat-box"><span>Total Colis</span><strong>${totalColis}</strong></div>
@@ -746,7 +770,6 @@
         <div class="stat-box"><span>Net Fournisseur</span><strong>${netFournisseur.toFixed(2)} DT</strong></div>
       `;
 
-      // Configure bulk buttons according to role
       const isLivreur = currentUser.role === "livreur";
       document.getElementById("btnBulkDepot").classList.toggle("hidden", !isLivreur);
       document.getElementById("btnBulkCours").classList.toggle("hidden", !isLivreur);
@@ -759,19 +782,22 @@
         container.innerHTML = visible
           .map((c) => {
             const checked = selectedIds.has(String(c.id));
-            const net = (Number(c.montant || 0) - Number(c.frais_livraison || 0)).toFixed(2);
+            const montant = Number(c.prix_article || 0);
+            const liv = Number(c.prix_livraison || 0);
+            const net = (montant - liv).toFixed(2);
+            const majDate = formatDate(c.settled_at || c.created_at);
             return `
             <div class="colis-item ${checked ? "selected" : ""}">
               <input type="checkbox" class="colis-check" ${checked ? "checked" : ""} onchange="toggleSelect('${c.id}')" />
               <div class="colis-body">
                 <div class="colis-top">
-                  <strong>${c.client_nom} • ${c.client_tel}</strong>
+                  <strong>${c.client_nom || ""} • ${c.telephone || ""}</strong>
                   <span class="badge ${statusClass(c.statut)}">${c.statut}</span>
                 </div>
                 <div class="meta">
-                  🏪 <strong>${getFournisseurName(c.fournisseur_id)}</strong> • 📍 ${c.adresse}<br/>
-                  💰 Total: <strong>${Number(c.montant).toFixed(2)} DT</strong> | 🚚 Livraison: ${Number(c.frais_livraison).toFixed(2)} DT | 🧾 Net: <strong>${net} DT</strong><br/>
-                  🕒 Dernière mise à jour: ${c.date_maj || "-"}
+                  🏪 <strong>${getFournisseurName(c.fournisseur_id)}</strong> • 📦 ${c.article || "-"} • 📍 ${c.adresse || ""}<br/>
+                  💰 Total: <strong>${montant.toFixed(2)} DT</strong> | 🚚 Livraison: ${liv.toFixed(2)} DT | 🧾 Net: <strong>${net} DT</strong><br/>
+                  🕒 Date: ${majDate}
                 </div>
                 <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;">
                   ${
@@ -835,8 +861,8 @@
         alert("Aucun colis à inclure dans le bordereau.");
         return;
       }
-      const totalMontant = list.reduce((s, c) => s + Number(c.montant || 0), 0);
-      const totalLiv = list.reduce((s, c) => s + Number(c.frais_livraison || 0), 0);
+      const totalMontant = list.reduce((s, c) => s + Number(c.prix_article || 0), 0);
+      const totalLiv = list.reduce((s, c) => s + Number(c.prix_livraison || 0), 0);
       const totalNet = totalMontant - totalLiv;
 
       const rows = list
@@ -845,19 +871,19 @@
         <tr>
           <td>${idx + 1}</td>
           <td>${getFournisseurName(c.fournisseur_id)}</td>
-          <td>${c.client_nom}<br/><small>${c.client_tel}</small></td>
-          <td>${c.adresse}</td>
-          <td>${c.statut}<br/><small>${c.date_maj || ""}</small></td>
-          <td>${Number(c.montant).toFixed(2)}</td>
-          <td>${Number(c.frais_livraison).toFixed(2)}</td>
-          <td><strong>${(Number(c.montant) - Number(c.frais_livraison)).toFixed(2)}</strong></td>
+          <td>${c.client_nom || ""}<br/><small>${c.telephone || ""}</small></td>
+          <td>${c.adresse || ""}</td>
+          <td>${c.statut}<br/><small>${formatDate(c.settled_at || c.created_at)}</small></td>
+          <td>${Number(c.prix_article || 0).toFixed(2)}</td>
+          <td>${Number(c.prix_livraison || 0).toFixed(2)}</td>
+          <td><strong>${(Number(c.prix_article || 0) - Number(c.prix_livraison || 0)).toFixed(2)}</strong></td>
         </tr>`
         )
         .join("");
 
       document.getElementById("bordereauPrintArea").innerHTML = `
         <h2 style="margin:0 0 4px;">Bordereau de Livraison & Paiement</h2>
-        <p style="margin:0 0 12px; color:#475569; font-size:13px;">Édité le : <strong>${nowFormatted()}</strong> • Nombre de colis : <strong>${list.length}</strong></p>
+        <p style="margin:0 0 12px; color:#475569; font-size:13px;">Édité le : <strong>${formatDate(new Date())}</strong> • Nombre de colis : <strong>${list.length}</strong></p>
         <table>
           <thead>
             <tr>
@@ -889,7 +915,6 @@
       document.getElementById("bordereauModal").classList.add("hidden");
     }
 
-    // Boot
     (async function init() {
       await syncData();
       try {
