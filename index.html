@@ -325,7 +325,7 @@
     <header class="app-header">
       <div>
         <h2 id="headerTitle">Livraison Manager</h2>
-        <small id="headerSub">Connecté</small>
+        <small id="headerSub">Connecté • v2</small>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <button class="btn btn-sm btn-outline" onclick="syncData()" title="Actualiser">🔄</button>
@@ -380,7 +380,7 @@
             <input type="tel" id="cTel" placeholder="Numéro de téléphone" required />
             <input type="text" id="cAdresse" placeholder="Adresse / Ville" required />
             <input type="text" id="cArticle" placeholder="Article / Désignation" />
-            <input type="number" step="0.01" id="cMontant" placeholder="Prix produit (DT)" required />
+            <input type="number" step="0.01" id="cMontant" placeholder="Prix net / produit (DT)" required />
             <input type="number" step="0.01" id="cLivraison" value="8" placeholder="Frais de livraison (DT)" required />
             <button type="submit" class="btn btn-primary" style="grid-column: 1 / -1;">Enregistrer le colis</button>
           </form>
@@ -439,9 +439,9 @@
     const SUPABASE_KEY = "sb_publishable_V03DVtMLcDV59b3cCaLZSA_aKhtFkNJ";
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const LS_FOURNISSEURS = "lm_fournisseurs_v1";
-    const LS_COLIS = "lm_colis_v1";
-    const LS_SESSION = "lm_session_v1";
+    const LS_FOURNISSEURS = "lm_fournisseurs_v2";
+    const LS_COLIS = "lm_colis_v2";
+    const LS_SESSION = "lm_session_v2";
 
     let isOnline = false;
     let currentUser = null;
