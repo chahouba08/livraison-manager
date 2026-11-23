@@ -325,7 +325,7 @@
     <header class="app-header">
       <div>
         <h2 id="headerTitle">Livraison Manager</h2>
-        <small id="headerSub">Connecté • v4</small>
+        <small id="headerSub">Connecté • v7</small>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <button class="btn btn-sm btn-outline" onclick="syncData()" title="Actualiser">🔄</button>
@@ -338,9 +338,35 @@
         <button class="tab active" data-tab="colis" onclick="switchLivreurTab('colis')">📦 Tous les colis</button>
         <button class="tab" data-tab="fournisseurs" onclick="switchLivreurTab('fournisseurs')">🏪 Fournisseurs</button>
         <button class="tab" data-tab="espaceFournisseur" onclick="switchLivreurTab('espaceFournisseur')">👁️ Vue par fournisseur</button>
+        <button class="tab" data-tab="controleDt" onclick="switchLivreurTab('controleDt')">💵 Contrôle (DT)</button>
       </div>
 
       <div class="stats-grid" id="statsGrid"></div>
+
+      <div id="sectionControleDt" class="hidden">
+        <div class="card">
+          <div class="card-title">💵 Contrôle financier & ajustements (DT)</div>
+          <div class="stats-grid" style="margin-bottom:14px;">
+            <div class="stat-box"><span>Recettes Colis (DT)</span><strong id="dtColisTotal">0.00 DT</strong></div>
+            <div class="stat-box"><span>Frais Livraison (DT)</span><strong id="dtLivTotal">0.00 DT</strong></div>
+            <div class="stat-box"><span>Ajustements (+) (DT)</span><strong id="dtPlusTotal">0.00 DT</strong></div>
+            <div class="stat-box"><span>Solde Contrôle Net (DT)</span><strong id="dtSoldeNet">0.00 DT</strong></div>
+          </div>
+          <form id="addControleForm" class="grid-2">
+            <input type="text" id="ctrlLabel" placeholder="Libellé / Motif (ex: Avance, Prime, Ajustement)" required />
+            <select id="ctrlType">
+              <option value="plus">Ajout (+ DT)</option>
+              <option value="moins">Déduction (- DT)</option>
+            </select>
+            <input type="number" step="0.01" id="ctrlMontant" placeholder="Montant en Dinars (DT)" required />
+            <button type="submit" class="btn btn-primary">➕ Ajouter au contrôle (DT)</button>
+          </form>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 Opérations de contrôle (DT)</div>
+          <div id="controleList"></div>
+        </div>
+      </div>
 
       <div id="sectionFournisseurs" class="hidden">
         <div class="card">
@@ -380,8 +406,8 @@
             <input type="tel" id="cTel" placeholder="Numéro de téléphone" required />
             <input type="text" id="cAdresse" placeholder="Adresse / Ville" required />
             <input type="text" id="cArticle" placeholder="Article / Désignation" />
-            <input type="number" step="0.01" id="cMontant" placeholder="Prix net / produit (DT)" required />
-            <input type="number" step="0.01" id="cLivraison" value="8" placeholder="Frais de livraison (DT)" />
+            <input type="number" step="0.01" id="cMontant" placeholder="Prix article (DT) — +8 DT auto" required />
+            <input type="number" step="0.01" id="cLivraison" value="8" placeholder="Frais de livraison (8 DT)" />
             <button type="submit" class="btn btn-primary" style="grid-column: 1 / -1;">Enregistrer le colis</button>
           </form>
         </div>
@@ -421,6 +447,43 @@
     </div>
   </div>
 
+  <div id="editColisModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <strong>✏️ Modifier le colis</strong>
+        <button class="btn btn-sm btn-danger" onclick="closeEditModal()">Fermer</button>
+      </div>
+      <form id="editColisForm" class="grid-2">
+        <input type="hidden" id="editColisId" />
+        <div class="field" style="margin-bottom:0;">
+          <label>Client</label>
+          <input type="text" id="editClient" required />
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Téléphone</label>
+          <input type="tel" id="editTel" required />
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Adresse</label>
+          <input type="text" id="editAdresse" required />
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Article</label>
+          <input type="text" id="editArticle" />
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Net / Colis (DT)</label>
+          <input type="number" step="0.01" id="editNet" required />
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Livraison (DT)</label>
+          <input type="number" step="0.01" id="editLivraison" required />
+        </div>
+        <button type="submit" class="btn btn-primary" style="grid-column: 1 / -1; margin-top:6px;">💾 Enregistrer les modifications</button>
+      </form>
+    </div>
+  </div>
+
   <div id="bordereauModal" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -439,15 +502,18 @@
     const SUPABASE_KEY = "sb_publishable_V03DVtMLcDV59b3cCaLZSA_aKhtFkNJ";
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const LS_FOURNISSEURS = "lm_fournisseurs_v4";
-    const LS_COLIS = "lm_colis_v4";
-    const LS_SESSION = "lm_session_v4";
+    const LS_FOURNISSEURS = "lm_fournisseurs_v7";
+    const LS_COLIS = "lm_colis_v7";
+    const LS_SESSION = "lm_session_v7";
+    const LS_CONTROLE = "lm_controle_dt_v7";
+    const DEFAULT_LIVRAISON = 8;
 
     let isOnline = false;
     let currentUser = null;
     let currentLivreurTab = "colis";
     let fournisseurs = [];
     let colis = [];
+    let controlesDt = [];
     let selectedIds = new Set();
 
     function isFournisseurAccount() {
@@ -470,15 +536,18 @@
     function saveLocal() {
       localStorage.setItem(LS_FOURNISSEURS, JSON.stringify(fournisseurs));
       localStorage.setItem(LS_COLIS, JSON.stringify(colis));
+      localStorage.setItem(LS_CONTROLE, JSON.stringify(controlesDt));
     }
 
     function loadLocal() {
       try {
         fournisseurs = JSON.parse(localStorage.getItem(LS_FOURNISSEURS) || "[]");
         colis = JSON.parse(localStorage.getItem(LS_COLIS) || "[]");
+        controlesDt = JSON.parse(localStorage.getItem(LS_CONTROLE) || "[]");
       } catch (e) {
         fournisseurs = [];
         colis = [];
+        controlesDt = [];
       }
       if (!fournisseurs.length) {
         fournisseurs = [{ id: "local-1", nom: "Boutique Amal", login: "amal", mot_de_passe: "1234" }];
@@ -491,7 +560,7 @@
       document.getElementById("cAdresse").value = "";
       document.getElementById("cArticle").value = "";
       document.getElementById("cMontant").value = "";
-      document.getElementById("cLivraison").value = isFournisseurView() ? "0" : "8";
+      document.getElementById("cLivraison").value = isFournisseurView() ? "0" : String(DEFAULT_LIVRAISON);
       document.getElementById("cClient").focus();
     }
 
@@ -570,8 +639,8 @@
       livInput.classList.toggle("hidden", hideLiv);
       if (hideLiv) {
         livInput.value = "0";
-      } else if (livInput.value === "") {
-        livInput.value = "8";
+      } else if (livInput.value === "" || livInput.value === "0") {
+        livInput.value = String(DEFAULT_LIVRAISON);
       }
     }
 
@@ -582,7 +651,7 @@
         currentUser.role === "livreur" ? "Espace Livreur (Admin)" : currentUser.nom;
       document.getElementById("headerSub").textContent =
         (currentUser.role === "livreur" ? "Supervision complète" : "Espace Fournisseur") +
-        (isOnline ? " • Supabase en ligne • v4" : " • Mode local • v4");
+        (isOnline ? " • Supabase en ligne • v7" : " • Mode local • v7");
 
       if (currentUser.role === "livreur") {
         document.getElementById("livreurNav").classList.remove("hidden");
@@ -593,6 +662,7 @@
         document.getElementById("colisFournisseurWrap").classList.add("hidden");
         document.getElementById("sectionFournisseurs").classList.add("hidden");
         document.getElementById("sectionSelectFournisseur").classList.add("hidden");
+        document.getElementById("sectionControleDt").classList.add("hidden");
         document.getElementById("sectionColis").classList.remove("hidden");
         applyLivraisonFieldVisibility();
         refreshUI();
@@ -616,9 +686,74 @@
       });
       document.getElementById("sectionFournisseurs").classList.toggle("hidden", tab !== "fournisseurs");
       document.getElementById("sectionSelectFournisseur").classList.toggle("hidden", tab !== "espaceFournisseur");
-      document.getElementById("sectionColis").classList.toggle("hidden", tab === "fournisseurs");
+      document.getElementById("sectionControleDt").classList.toggle("hidden", tab !== "controleDt");
+      document.getElementById("sectionColis").classList.toggle(
+        "hidden",
+        tab === "fournisseurs" || tab === "controleDt"
+      );
       applyLivraisonFieldVisibility();
       refreshUI();
+    }
+
+    document.getElementById("addControleForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const label = document.getElementById("ctrlLabel").value.trim();
+      const type = document.getElementById("ctrlType").value;
+      const montant = Math.abs(parseFloat(document.getElementById("ctrlMontant").value) || 0);
+      if (!label || !montant) return;
+      controlesDt.unshift({
+        id: "dt-" + Date.now(),
+        label,
+        type,
+        montant,
+        date: new Date().toISOString()
+      });
+      saveLocal();
+      e.target.reset();
+      renderControleDt();
+    });
+
+    function deleteControle(id) {
+      controlesDt = controlesDt.filter((x) => String(x.id) !== String(id));
+      saveLocal();
+      renderControleDt();
+    }
+
+    function renderControleDt() {
+      const totalNetColis = colis.reduce((s, c) => s + Number(c.prix_article || 0), 0);
+      const totalLivColis = colis.reduce((s, c) => s + Number(c.prix_livraison || 0), 0);
+      const plusAdj = controlesDt
+        .filter((x) => x.type === "plus")
+        .reduce((s, x) => s + Number(x.montant || 0), 0);
+      const moinsAdj = controlesDt
+        .filter((x) => x.type === "moins")
+        .reduce((s, x) => s + Number(x.montant || 0), 0);
+      const soldeNet = totalNetColis + totalLivColis + plusAdj - moinsAdj;
+
+      document.getElementById("dtColisTotal").textContent = totalNetColis.toFixed(2) + " DT";
+      document.getElementById("dtLivTotal").textContent = totalLivColis.toFixed(2) + " DT";
+      document.getElementById("dtPlusTotal").textContent = plusAdj.toFixed(2) + " DT";
+      document.getElementById("dtSoldeNet").textContent = soldeNet.toFixed(2) + " DT";
+
+      document.getElementById("controleList").innerHTML = controlesDt.length
+        ? controlesDt
+            .map(
+              (x) => `
+          <div class="colis-item" style="justify-content:space-between; align-items:center;">
+            <div>
+              <strong>${x.label}</strong>
+              <div class="meta">🕒 ${formatDate(x.date)}</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge ${x.type === "plus" ? "st-paye" : "st-depot"}">
+                ${x.type === "plus" ? "+" : "-"}${Number(x.montant).toFixed(2)} DT
+              </span>
+              <button class="btn btn-sm btn-danger" onclick="deleteControle('${x.id}')">🗑️</button>
+            </div>
+          </div>`
+            )
+            .join("")
+        : "<p class='meta'>Aucune opération de contrôle enregistrée.</p>";
     }
 
     document.getElementById("addFournisseurForm").addEventListener("submit", async (e) => {
@@ -678,11 +813,20 @@
       const telephone = document.getElementById("cTel").value.trim();
       const adresse = document.getElementById("cAdresse").value.trim();
       const article = document.getElementById("cArticle").value.trim() || "Colis";
-      const prix_article = parseFloat(document.getElementById("cMontant").value) || 0;
-      const livRaw = document.getElementById("cLivraison").value.trim();
+      const saisieMontant = parseFloat(document.getElementById("cMontant").value) || 0;
+      const livRaw = String(document.getElementById("cLivraison").value ?? "").trim();
+
       let prix_livraison = 0;
+      let prix_article = saisieMontant;
+
       if (!isFournisseurView()) {
-        prix_livraison = livRaw === "" ? 8 : (isNaN(parseFloat(livRaw)) ? 8 : parseFloat(livRaw));
+        if (livRaw === "") {
+          prix_livraison = DEFAULT_LIVRAISON;
+        } else {
+          const parsedLiv = parseFloat(livRaw);
+          prix_livraison = Number.isFinite(parsedLiv) ? parsedLiv : DEFAULT_LIVRAISON;
+        }
+        prix_article = saisieMontant + DEFAULT_LIVRAISON;
       }
       const statut = "En dépôt";
 
@@ -714,7 +858,49 @@
       document.getElementById("cAdresse").value = "";
       document.getElementById("cArticle").value = "";
       document.getElementById("cMontant").value = "";
-      document.getElementById("cLivraison").value = isFournisseurView() ? "0" : "8";
+      document.getElementById("cLivraison").value = isFournisseurView() ? "0" : String(DEFAULT_LIVRAISON);
+      refreshUI();
+    });
+
+    function openEditModal(id) {
+      const target = colis.find((c) => String(c.id) === String(id));
+      if (!target) return;
+      document.getElementById("editColisId").value = target.id;
+      document.getElementById("editClient").value = target.client_nom || "";
+      document.getElementById("editTel").value = target.telephone || "";
+      document.getElementById("editAdresse").value = target.adresse || "";
+      document.getElementById("editArticle").value = target.article || "";
+      document.getElementById("editNet").value = Number(target.prix_article || 0);
+      document.getElementById("editLivraison").value = Number(target.prix_livraison || 0);
+      document.getElementById("editColisModal").classList.remove("hidden");
+    }
+
+    function closeEditModal() {
+      document.getElementById("editColisModal").classList.add("hidden");
+    }
+
+    document.getElementById("editColisForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = document.getElementById("editColisId").value;
+      const patch = {
+        client_nom: document.getElementById("editClient").value.trim(),
+        telephone: document.getElementById("editTel").value.trim(),
+        adresse: document.getElementById("editAdresse").value.trim(),
+        article: document.getElementById("editArticle").value.trim() || "Colis",
+        prix_article: parseFloat(document.getElementById("editNet").value) || 0,
+        prix_livraison: parseFloat(document.getElementById("editLivraison").value) || 0
+      };
+
+      if (isOnline) {
+        const { error } = await sb.from("colis").update(patch).eq("id", id);
+        if (error) {
+          alert("Erreur Supabase lors de la modification: " + error.message);
+          return;
+        }
+      }
+      colis = colis.map((c) => (String(c.id) === String(id) ? { ...c, ...patch } : c));
+      saveLocal();
+      closeEditModal();
       refreshUI();
     });
 
@@ -846,6 +1032,7 @@
             .join("")
         : "<p class='meta'>Aucun fournisseur enregistré.</p>";
 
+      renderControleDt();
       renderColis();
     }
 
@@ -918,6 +1105,7 @@
                       <option value="Payé" ${c.statut === "Payé" ? "selected" : ""}>Payé</option>
                       <option value="Payé Fournisseur" ${c.statut === "Payé Fournisseur" ? "selected" : ""}>Payé Fournisseur</option>
                     </select>
+                    <button class="btn btn-sm btn-outline" onclick="openEditModal('${c.id}')">✏️ Modifier</button>
                     <button class="btn btn-sm btn-danger" onclick="deleteColis('${c.id}')">🗑️</button>
                   `
                       : `
