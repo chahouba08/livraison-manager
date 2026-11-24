@@ -1,0 +1,9 @@
+ضع الأسطر التالية داخل <head> في index.html قبل </head>:
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Livraison">
+<link rel="stylesheet" href="mobile-v17.css">
+<script src="mobile-v17.js" defer></script>
