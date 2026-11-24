@@ -325,7 +325,7 @@
     <header class="app-header">
       <div>
         <h2 id="headerTitle">Livraison Manager</h2>
-        <small id="headerSub">Connecté • v10</small>
+        <small id="headerSub">Connecté • v11</small>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <button class="btn btn-sm btn-outline" onclick="syncData()" title="Actualiser">🔄</button>
@@ -502,10 +502,10 @@
     const SUPABASE_KEY = "sb_publishable_V03DVtMLcDV59b3cCaLZSA_aKhtFkNJ";
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const LS_FOURNISSEURS = "lm_fournisseurs_v10";
-    const LS_COLIS = "lm_colis_v10";
-    const LS_SESSION = "lm_session_v10";
-    const LS_CONTROLE = "lm_controle_dt_v10";
+    const LS_FOURNISSEURS = "lm_fournisseurs_v11";
+    const LS_COLIS = "lm_colis_v11";
+    const LS_SESSION = "lm_session_v11";
+    const LS_CONTROLE = "lm_controle_dt_v11";
     const DEFAULT_LIVRAISON = 8;
 
     let isOnline = false;
@@ -656,7 +656,7 @@
         currentUser.role === "livreur" ? "Espace Livreur (Admin)" : currentUser.nom;
       document.getElementById("headerSub").textContent =
         (currentUser.role === "livreur" ? "Supervision complète" : "Espace Fournisseur") +
-        (isOnline ? " • Supabase en ligne • v10" : " • Mode local • v10");
+        (isOnline ? " • Supabase en ligne • v11" : " • Mode local • v11");
 
       if (currentUser.role === "livreur") {
         document.getElementById("livreurNav").classList.remove("hidden");
@@ -823,7 +823,7 @@
       const saisieMontant = parseDecimal(document.getElementById("cMontant").value, 0);
       const livRaw = String(document.getElementById("cLivraison").value ?? "").trim();
 
-      const prix_livraison = livRaw === "" ? DEFAULT_LIVRAISON : parseDecimal(livRaw, DEFAULT_LIVRAISON);
+      const prix_livraison = DEFAULT_LIVRAISON;
       const prix_article = saisieMontant + DEFAULT_LIVRAISON;
       const statut = "En dépôt";
 
@@ -1034,9 +1034,6 @@
       const totalNet = visible.reduce((s, c) => s + Number(c.prix_article || 0), 0);
       const totalLiv = visible.reduce((s, c) => s + Number(c.prix_livraison || 0), 0);
       const totalClient = totalNet + totalLiv;
-      const netPayeFournisseur = visible
-        .filter((c) => c.statut === "Payé Fournisseur")
-        .reduce((s, c) => s + Number(c.prix_article || 0), 0);
 
       const statsGrid = document.getElementById("statsGrid");
       if (isFournisseurView()) {
